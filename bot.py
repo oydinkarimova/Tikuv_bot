@@ -6,6 +6,8 @@ from telegram.ext import (
     Application, CommandHandler, MessageHandler,
     filters, ContextTypes, ConversationHandler
 )
+import json
+import tempfile
 import gspread
 from google.oauth2.service_account import Credentials
 
@@ -20,7 +22,6 @@ logger = logging.getLogger(__name__)
 BOT_TOKEN       = os.environ["BOT_TOKEN"]           # токен от @BotFather
 SHEET_ID        = os.environ["SHEET_ID"]            # ID Google Таблицы
 ADMIN_CHAT_ID   = os.environ.get("ADMIN_CHAT_ID")   # ваш Telegram ID (опционально)
-CREDENTIALS_FILE = "credentials.json"               # ключ сервисного аккаунта
 
 # ── Состояния диалога ─────────────────────────────────────────────────────
 (
@@ -126,7 +127,14 @@ def get_sheet():
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive",
     ]
-    creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=scopes)
+    # Читаем credentials из переменной окружения
+    creds_json = os.environ.get("GOOGLE_CREDENTIALS")
+    if creds_json:
+        creds_dict = json.loads(creds_json)
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+    else:
+        # Fallback — локальный файл (для тестирования на компьютере)
+        creds = Credentials.from_service_account_file("credentials.json", scopes=scopes)
     client = gspread.authorize(creds)
     sheet = client.open_by_key(SHEET_ID).sheet1
     # Добавить заголовки если таблица пустая
